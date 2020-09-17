@@ -1,0 +1,16 @@
+build-mac:
+	go build -v --ldflags="-w" \
+    		-o bin/darwin/amd64/chart-registry main.go # mac osx
+
+build-linux: export GOOS=linux
+build-linux: export GOARCH=amd64
+build-linux: export CGO_ENABLED=0
+build-linux:
+	go build -v --ldflags="-w" \
+		-o bin/linux/amd64/chart-registry main.go  # linux
+	sha256sum bin/linux/amd64/chart-registry || shasum -a 256 bin/linux/amd64/chart-registry
+
+image: build-linux
+	@docker build -t harbor-b.alauda.cn/3rdparty/chart-registry:v1.0 .
+	@docker push harbor-b.alauda.cn/3rdparty/chart-registry:v1.0
+
