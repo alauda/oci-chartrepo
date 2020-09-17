@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"k8s.io/klog"
 	"strings"
+	"sync"
 )
 
 var (
@@ -18,6 +19,8 @@ var (
 
 	pathToRefCache map[string]RefData
 )
+
+var l = sync.Mutex{}
 
 func init() {
 	refToChartCache = make(map[string]*HelmOCIConfig)
@@ -110,11 +113,14 @@ func (b *Backend) ListObjects() ([]HelmOCIConfig, error) {
 			cfg.Digest = manifest.Layers[0].Digest.Encoded()
 			objects = append(objects, *cfg)
 
+			// may be helm and captain are pulling same time 
+			l.Lock()
 			refToChartCache[ref] = cfg
 			pathToRefCache[genPath(cfg.Name, cfg.Version)] = RefData{
 				Name:   image,
 				Digest: manifest.Layers[0].Digest,
 			}
+			l.Unlock()
 		}
 
 	}
