@@ -113,7 +113,7 @@ func (b *Backend) ListObjects() ([]HelmOCIConfig, error) {
 			cfg.Digest = manifest.Layers[0].Digest.Encoded()
 			objects = append(objects, *cfg)
 
-			// may be helm and captain are pulling same time 
+			// may be helm and captain are pulling same time
 			l.Lock()
 			refToChartCache[ref] = cfg
 			pathToRefCache[genPath(cfg.Name, cfg.Version)] = RefData{

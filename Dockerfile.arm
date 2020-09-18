@@ -1,0 +1,6 @@
+FROM arm64v8/alpine:3.9
+
+RUN adduser -D -u 1000 chart-registry
+COPY bin/linux/arm64/chart-registry /chart-registry
+USER 1000
+ENTRYPOINT ["/chart-registry"]
