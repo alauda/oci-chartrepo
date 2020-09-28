@@ -2,7 +2,7 @@ library "alauda-cicd"
 def language = "golang"
 AlaudaPipeline {
 	config = [
-		agent: 'golang-1.12',
+		agent: 'golang-1.13',
 		folder: '.',
 		chart: [
 		[
@@ -43,7 +43,7 @@ AlaudaPipeline {
         groovy:
         - |+
           try {
-            sh script: "make test PACKAGE=juno", label: "unit tests..."
+            sh script: "make test", label: "unit tests..."
           } finally {
             junit allowEmptyResults: true, testResults: 'pkg/**/*.xml'
           }
