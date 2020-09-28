@@ -10,7 +10,6 @@ build-linux: export CGO_ENABLED=0
 build-linux:
 	go build -v --ldflags="-w" \
 		-o bin/linux/amd64/chart-registry main.go  # linux
-	sha256sum bin/linux/amd64/chart-registry || shasum -a 256 bin/linux/amd64/chart-registry
 
 
 build: build-linux
