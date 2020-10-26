@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: oci-chart-registry
+  name: oci-chart-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oci-chart-registry
+  template:
+    metadata:
+      labels:
+        app: oci-chart-registry
+    spec:
+      containers:
+        - name: oci-chart-registry
+          args:
+            - --storage=registry
+            - --storage-registry-repo={{remote.registry.address}}
+            - --storage-registry-scheme={{remote.registry.scheme}}  # HTTP or HTTPS
+            - --port=8080
+          image: oci-chart-registry
+          imagePullPolicy: IfNotPresent
+          # if your registry does not require user authentication, remove the following code about registry-secret volume.
+          volumeMounts:
+            - name: registry-secret
+              mountPath: /etc/secret/dockerconfigjson
+              subPath: dockerconfigjson
+      volumes:
+        - name: registry-secret
+          secret:
+            secretName: my-registry-secret
+            items:
+              - key: .dockerconfigjson
+                path: dockerconfigjson

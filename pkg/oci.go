@@ -2,16 +2,18 @@ package pkg
 
 import (
 	"encoding/json"
-	"github.com/heroku/docker-registry-client/registry"
+	"fmt"
 	"io/ioutil"
-	"k8s.io/klog"
 	"strings"
 	"sync"
+
+	"github.com/heroku/docker-registry-client/registry"
+	"k8s.io/klog"
 )
 
 var (
 
-	// backend global var
+	// GlobalBackend backend global var
 	GlobalBackend *Backend
 
 	// cache section
@@ -27,23 +29,38 @@ func init() {
 	pathToRefCache = make(map[string]RefData)
 }
 
+// Backend defines a RUL address and a Registry client
 type Backend struct {
 	URL string
 	Hub *registry.Registry
 }
 
-func NewBackend(url string) *Backend {
-	if !strings.HasPrefix(url, "http") {
-		url = "http://" + url
-	}
+// NewBackend create a Registry client and return a Backend structure
+func NewBackend(opts *RegistryOptions) *Backend {
+	var hub *registry.Registry
+	var err error
+	opts.ValidateAndSetScheme()
+	klog.Infof("registry scheme is %s", opts.Scheme)
 
-	hub, err := registry.NewInsecure(url, "", "")
-	if err != nil {
-		panic(err)
+	if !opts.IsSchemeValid() {
+		hub, err = opts.TryToNewRegistry()
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		prefix := opts.Scheme + "://"
+		if !strings.HasPrefix(opts.URL, prefix) {
+			opts.URL = fmt.Sprintf("%s%s", prefix, opts.URL)
+		}
+
+		hub, err = registry.NewInsecure(opts.URL, opts.Username, opts.Password)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return &Backend{
-		URL: url,
+		URL: opts.URL,
 		Hub: hub,
 	}
 }
@@ -61,8 +78,12 @@ func (b *Backend) ListObjects() ([]HelmOCIConfig, error) {
 	for _, image := range repositories {
 		tags, err := b.Hub.Tags(image)
 		if err != nil {
-			if strings.Contains(err.Error(), "repository name not known to registry") {
-				klog.Error("err list tags for repo: ", err)
+			klog.Error("err list tags for repo: ", err)
+			// You can list Repositories, but the API returns UNAUTHORIZED or PROJECT_POLICY_VIOLATION when you list tags for a repository
+			if strings.Contains(err.Error(), "repository name not known to registry") ||
+				strings.Contains(err.Error(), "UNAUTHORIZED") ||
+				strings.Contains(err.Error(), "PROJECT_POLICY_VIOLATION") {
+
 				continue
 			}
 			return nil, err
@@ -70,7 +91,15 @@ func (b *Backend) ListObjects() ([]HelmOCIConfig, error) {
 		for _, tag := range tags {
 			manifest, err := b.Hub.OCIManifestV1(image, tag)
 			if err != nil {
-				return nil, err
+				klog.Warning("err get manifest for tag: ", err)
+				// You can list tags, but the API returns UNAUTHORIZED or PROJECT_POLICY_VIOLATION when you get manifest for a tag
+				if strings.Contains(err.Error(), "UNAUTHORIZED") ||
+					strings.Contains(err.Error(), "PROJECT_POLICY_VIOLATION") {
+					break
+				}
+
+				// FIXME: continue or return error.
+				continue
 			}
 
 			// if one tag is not helm, consider this image is not
