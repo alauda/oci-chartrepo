@@ -1,10 +1,12 @@
 package pkg
 
 import (
-	"github.com/labstack/echo/v4"
 	"io/ioutil"
+
+	"github.com/labstack/echo/v4"
 )
 
+// GetChartHandler get the charts data api
 func GetChartHandler(c echo.Context) error {
 	name := c.Param("name")
 	data, err := GetChartData(name)
